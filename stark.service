@@ -1,20 +1,174 @@
-[Unit]
-Description=Stark Print Server
-After=network.target
+Got it! You want a **clean, sideloadable APK**—no Google Play involved, just a polished APK file you can share for manual install.
 
-[Service]
-User=stark
-Group=stark
-WorkingDirectory=/home/stark
-ExecStart=/home/stark/venv/bin/python /home/stark/server.py
-Restart=always
-Environment="PATH=/home/stark/venv/bin"
+Here’s how to do that with Buildozer:
 
-[Install]
-WantedBy=multi-user.target
+---
 
-2️⃣ Reload and start
+## How to create a clean, sideload-ready APK (no Google Play)
 
-sudo systemctl daemon-reload
-sudo systemctl enable stark.service
-sudo systemctl start stark.service
+### 1. Build a **release** APK (not debug)
+
+In your app folder inside WSL, run:
+
+```bash
+buildozer android release
+```
+
+This creates an unsigned release APK at:
+
+```
+bin/stark-0.1-release-unsigned.apk
+```
+
+---
+
+### 2. Sign the APK (mandatory for installation on Android 7+)
+
+Android requires release APKs to be signed. You can sign it yourself with a keystore:
+
+#### Generate a keystore (only once)
+
+```bash
+keytool -genkey -v -keystore my-release-key.keystore -alias starkkey -keyalg RSA -keysize 2048 -validity 10000
+```
+
+* Set a password and fill in info when prompted
+* This creates `my-release-key.keystore` file
+
+---
+
+### 3. Sign the APK with your keystore
+
+```bash
+jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore my-release-key.keystore bin/stark-0.1-release-unsigned.apk starkkey
+```
+
+Enter your keystore password when asked.
+
+---
+
+### 4. (Optional but recommended) Align the APK
+
+Run:
+
+```bash
+zipalign -v 4 bin/stark-0.1-release-unsigned.apk bin/stark-0.1-release.apk
+```
+
+* `zipalign` is part of Android SDK build tools.
+* Aligning improves APK performance.
+
+---
+
+### 5. Your final clean APK is:
+
+```
+bin/stark-0.1-release.apk
+```
+
+This APK is ready for sideloading on any compatible Android device.
+
+---
+
+### 6. Distribute & install
+
+* Send `stark-0.1-release.apk` via email, USB, or cloud
+* On Android device, enable “Install from unknown sources”
+* Open the APK to install
+
+---
+
+## Summary
+
+* `buildozer android release` builds release APK
+* Generate & use keystore to sign APK
+* Optionally align APK with `zipalign`
+* Share clean signed APK without Google Play
+
+---
+
+If you want, I can provide a **script or commands** to automate signing & aligning or help you set up everything step-by-step!
+
+
+
+Alright — here’s the **clean way to install Buildozer** so you can build your APK.
+Since you’re on Windows, we’ll do this in **WSL (Windows Subsystem for Linux)** because that’s the easiest and most reliable path.
+
+---
+
+## **Step 1 — Install WSL and Ubuntu**
+
+1. Open **PowerShell as Administrator**
+2. Run:
+
+   ```powershell
+   wsl --install
+   ```
+3. Restart your computer if asked.
+4. After restart, open **Ubuntu** from your Start Menu.
+5. When prompted, set your **Linux username** and **password** (this is separate from your Windows account).
+
+---
+
+## **Step 2 — Update Ubuntu and Install Build Tools**
+
+Inside the Ubuntu terminal, run:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3-pip python3-setuptools git \
+    build-essential libssl-dev libffi-dev \
+    libsqlite3-dev libjpeg-dev libfreetype6-dev \
+    zlib1g-dev libncurses5 libncurses5-dev libncursesw5-dev \
+    libgstreamer1.0 libgstreamer1.0-dev \
+    openjdk-17-jdk unzip curl wget zip
+```
+
+---
+
+## **Step 3 — Install Cython and Buildozer**
+
+```bash
+pip3 install --upgrade pip
+pip3 install --upgrade cython
+pip3 install buildozer
+```
+
+---
+
+## **Step 4 — Verify Installation**
+
+Run:
+
+```bash
+buildozer --version
+```
+
+If installed correctly, it will show the Buildozer version (e.g., `Buildozer 1.5.0`).
+
+---
+
+## **Step 5 — Test with Your App**
+
+1. Go to your project folder from Ubuntu (for example, if your code is in `C:\myapp` on Windows):
+
+   ```bash
+   cd /mnt/c/myapp
+   ```
+2. Initialize Buildozer:
+
+   ```bash
+   buildozer init
+   ```
+3. Edit `buildozer.spec` as needed.
+4. Build your APK:
+
+   ```bash
+   buildozer android debug
+   ```
+
+---
+
+If you want, I can give you a **ready-to-use buildozer.spec** file already set up for your Stark app so you just drop it in and run the build. That way you don’t have to figure out the settings yourself.
+
+Do you want me to prepare that?
