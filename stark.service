@@ -1,0 +1,16 @@
+[Unit]
+Description=Stark Print Server
+After=network.target
+
+[Service]
+Type=simple
+User=stark         # create a user 'stark' or change to an existing user
+Group=stark
+WorkingDirectory=/var/lib/stark
+ExecStart=/usr/bin/python3 /opt/stark/stark_server.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
