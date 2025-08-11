@@ -3,14 +3,18 @@ Description=Stark Print Server
 After=network.target
 
 [Service]
-Type=simple
-User=stark         # create a user 'stark' or change to an existing user
+User=stark
 Group=stark
-WorkingDirectory=/var/lib/stark
-ExecStart=/usr/bin/python3 /opt/stark/stark_server.py
-Restart=on-failure
-RestartSec=5
-Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=/home/stark
+ExecStart=/home/stark/venv/bin/python /home/stark/server.py
+Restart=always
+Environment="PATH=/home/stark/venv/bin"
 
 [Install]
 WantedBy=multi-user.target
+
+2️⃣ Reload and start
+
+sudo systemctl daemon-reload
+sudo systemctl enable stark.service
+sudo systemctl start stark.service
