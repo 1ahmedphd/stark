@@ -1,51 +1,145 @@
-Here’s the clean, no-Play-Store, step-by-step right after you’ve done buildozer init in your WSL/Linux shell:
+Got it ✅ You want your Ollama model running on your Linux machine to be accessible from **anywhere in the world** (not just localhost) and usable in tools like **Continuity or Cline** for unlimited chatting.
+Here’s the full run-down step by step:
 
-1. Edit buildozer.spec
+---
 
-[app]
-title = Stark
-package.name = stark
-package.domain = org.stark
-source.dir = .
-source.include_exts = py,kv,png,jpg,jpeg
-version = 0.1
-requirements = python3,kivy,requests,plyer
-source.name = stark.py
-orientation = portrait
-android.api = 33
-android.minapi = 21
-android.archs = armeabi-v7a,arm64-v8a
-android.permissions = INTERNET
-android.manifest_placeholders = android:usesCleartextTraffic="true"
+## 1. Make Ollama Accessible on Your Server
 
-Save it.
+By default, Ollama only listens on `localhost`. You need to tell it to bind to **all interfaces (0.0.0.0)**.
 
-5. Build release APK
+Edit or create the systemd override file:
 
-buildozer android release
+```bash
+sudo systemctl edit ollama.service
+```
 
-Gives you:
+Add:
 
-bin/stark-0.1-release-unsigned.apk
+```ini
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0"
+```
 
-6. Create keystore (once)
+Then restart:
 
-keytool -genkeypair -v \
-  -keystore my-release-key.keystore \
-  -alias starkkey \
-  -keyalg RSA -keysize 2048 -validity 10000
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
+```
 
-7. Align and sign
+Now Ollama will listen on `http://0.0.0.0:11434`.
 
-BUILD_TOOLS=$(ls ~/.buildozer/android/platform/android-sdk/build-tools | sort -V | tail -n 1)
-ZIPALIGN=~/.buildozer/android/platform/android-sdk/build-tools/$BUILD_TOOLS/zipalign
-APKSIGNER=~/.buildozer/android/platform/android-sdk/build-tools/$BUILD_TOOLS/apksigner
+---
 
-$ZIPALIGN -v -p 4 bin/stark-0.1-release-unsigned.apk bin/stark-0.1-release-aligned.apk
-$APKSIGNER sign --ks my-release-key.keystore bin/stark-0.1-release-aligned.apk
-$APKSIGNER verify bin/stark-0.1-release-aligned.apk
+## 2. Open Firewall & Network Access
 
-8. Distribute
-The file bin/stark-0.1-release-aligned.apk is your final signed APK. Share directly — users enable “Install unknown apps” to sideload.
+Make sure port `11434` is open:
 
-Do you want me to give you a ready-to-use buildozer.spec with your file-chooser Android permissions already set for your Stark app? That’ll save you editing time.
+```bash
+sudo ufw allow 11434/tcp
+```
+
+Check with:
+
+```bash
+ss -tulpn | grep 11434
+```
+
+---
+
+## 3. Expose to the Internet
+
+You need a stable way to reach your machine:
+
+### Option A – Public IP
+
+* If your ISP gives you a public IP, you can just use:
+
+  ```
+  http://<your-public-ip>:11434
+  ```
+* But IPs may change and ISPs often block ports.
+
+### Option B – DuckDNS (Free Dynamic DNS)
+
+1. Sign up at [DuckDNS](https://www.duckdns.org/).
+2. Get a subdomain like `myollama.duckdns.org`.
+3. Install the DuckDNS updater on your Linux machine:
+
+   ```bash
+   mkdir ~/duckdns
+   cd ~/duckdns
+   echo "url=https://www.duckdns.org/update?domains=myollama&token=YOURTOKEN&ip=" > duck.sh
+   chmod 700 duck.sh
+   crontab -e
+   ```
+
+   Add:
+
+   ```
+   */5 * * * * ~/duckdns/duck.sh >/dev/null 2>&1
+   ```
+
+   → This keeps your domain synced with your changing IP.
+
+Now you can reach:
+
+```
+http://myollama.duckdns.org:11434
+```
+
+---
+
+## 4. Secure the Connection (Recommended)
+
+Running Ollama open to the internet without auth = anyone can use your GPU/CPU.
+Safer way: put it behind a reverse proxy with HTTPS & auth.
+
+### Nginx Reverse Proxy Example:
+
+```nginx
+server {
+    listen 80;
+    server_name myollama.duckdns.org;
+
+    location / {
+        proxy_pass http://127.0.0.1:11434;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+Then add Let’s Encrypt for HTTPS:
+
+```bash
+sudo certbot --nginx -d myollama.duckdns.org
+```
+
+(Optional) Add **basic auth** so not everyone can use it.
+
+---
+
+## 5. Use in Continuity / Cline
+
+Both tools support custom Ollama endpoints.
+Just point them to your domain:
+
+```
+http://myollama.duckdns.org:11434
+```
+
+Now you can chat with your model from anywhere in the world, unlimited.
+
+---
+
+🔥 At this point, you’ll have:
+
+* Ollama running globally
+* Domain via DuckDNS
+* Optional HTTPS + password protection
+* Works with Continuity or Cline
+
+---
+
+Do you want me to write the **secure setup with Nginx + auth** for you (so random people can’t hijack your model), or do you just want it open and fast?
